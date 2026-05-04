@@ -1,0 +1,22 @@
+{
+  "type": "port",
+  "name": "crossbeam-channel-kotlin",
+  "source": {
+    "path": "tmp/crossbeam-channel/src",
+    "lang": "rust"
+  },
+  "target": {
+    "path": "src/commonMain/kotlin/io/github/kotlinmania/crossbeamchannel",
+    "lang": "kotlin"
+  },
+  "checks": {
+    "deep": true,
+    "missing": true,
+    "todos": true,
+    "lint": true
+  },
+  "reexport_modules": [
+    "mod.rs",
+    "lib.rs"
+  ]
+}
