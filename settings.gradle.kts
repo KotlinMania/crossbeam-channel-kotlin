@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "crossbeam-channel-kotlin"
+
