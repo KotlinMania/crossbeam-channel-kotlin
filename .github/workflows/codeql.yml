@@ -1,13 +1,28 @@
 name: CodeQL
 
-# Universal CodeQL config for KotlinMania repos.
+# CodeQL for crossbeam-channel-kotlin (Kotlin Multiplatform).
 #
-# We do NOT analyze `java-kotlin`. The CodeQL Kotlin extractor only hooks
-# JVM `kotlinc` invocations; Kotlin/Native and Kotlin/JS compilations
-# produce no traced events, so `database finalize` aborts with
-# "CodeQL could not process any code written in Java/Kotlin" on KMP
-# projects without a JVM target. `actions` covers workflow files;
-# `javascript-typescript` covers any JS/TS in the repo.
+# `actions` covers workflow files. `javascript-typescript` covers any JS/TS
+# in the repo (karma config, vendored npm packages, etc.). `java-kotlin`
+# runs in `manual` mode because:
+#   - `autobuild` invokes `./gradlew testClasses`, a JVM-style task that
+#     doesn't exist in this KMP project (no JVM target).
+#   - `build-mode: none` produces no extractable artifacts for KMP, so
+#     the extractor exits with "could not process any code written in
+#     Java/Kotlin".
+# The manual build below runs `compileAndroidMain`, which is the one KMP
+# compilation in this repo that emits real JVM `.class` files (via the
+# `com.android.kotlin.multiplatform.library` plugin). That's the compile
+# path CodeQL's Kotlin extractor (an LD_PRELOAD tracer hooking JVM kotlinc
+# exec) can ingest. `compileKotlinJs` and `compileKotlinWasmJs` are also
+# listed on the chance that the tracer matches by binary name and catches
+# the K/JS and K/WASM compilers too.
+#
+# Reference: KotlinMania/starlark-syntax-kotlin .github/workflows/codeql.yml
+# (PR #30 confirmed the trick green on both the dynamic Default Setup
+# `github-code-scanning/codeql` check and the custom CodeQL Advanced
+# workflow). See workspace CLAUDE.md "CodeQL java-kotlin via
+# compileAndroidMain" for the full rationale.
 
 on:
   push:
@@ -36,16 +51,57 @@ jobs:
             build-mode: none
           - language: actions
             build-mode: none
+          - language: java-kotlin
+            build-mode: manual
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        if: matrix.build-mode == 'manual'
+        uses: actions/setup-java@v5.2.0
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      - name: Setup Gradle
+        if: matrix.build-mode == 'manual'
+        uses: gradle/actions/setup-gradle@v6.1.0
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+
+      - name: Compile every Kotlin target for CodeQL extraction
+        if: matrix.build-mode == 'manual'
+        shell: bash
+        # `compileAndroidMain` emits real JVM `.class` files under
+        # `build/classes/kotlin/android/main` for the
+        # `com.android.kotlin.multiplatform.library` plugin's JVM kotlinc
+        # invocation — the LD_PRELOAD tracer hooks exactly that. The
+        # K/JS and K/WASM compiles are speculative coverage extension;
+        # harmless CI cost if the tracer doesn't match them. Native
+        # compiles are intentionally absent (no JVM kotlinc emitted).
+        #
+        # `--rerun-tasks` + `--no-build-cache` ensure kotlinc actually
+        # runs (defeats Gradle up-to-date check + setup-gradle's cache
+        # hits). `-Pkotlin.compiler.execution.strategy=out-of-process`
+        # forks a fresh kotlinc JVM per compilation so the tracer has a
+        # process exec to intercept. `--no-configuration-cache
+        # --no-daemon` are belt-and-braces for the same property.
+        run: |
+          ./gradlew \
+            compileAndroidMain \
+            compileKotlinJs \
+            compileKotlinWasmJs \
+            --rerun-tasks \
+            --no-build-cache \
+            -Pkotlin.compiler.execution.strategy=out-of-process \
+            --no-configuration-cache \
+            --no-daemon
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

@@ -101,7 +101,35 @@ kotlin {
         }
 
         val commonTest by getting { dependencies { implementation(kotlin("test")) } }
+
+        // Executor-keyed source-set split (workspace template fix #3).
+        //
+        // With `applyDefaultHierarchyTemplate()` plus `js { browser(); nodejs() }`
+        // and `wasmJs { browser(); nodejs() }`, each JS-family target has one
+        // `main` compilation shared between the browser and Node runtimes —
+        // any Node-only code in `jsMain` / `wasmJsMain` lands in the webpack
+        // browser bundle and fails to resolve `fs` regardless of how the
+        // `require` is hidden. Split along the *executor* so Node-only and
+        // browser-only `actual`s live in separate compilation units shared
+        // across `js` and `wasmJs`.
+        //
+        // crossbeam-channel-kotlin has no Node-only code in `jsMain` /
+        // `wasmJsMain` today, but the layout is mandatory template law and is
+        // set up here pro forma so future actuals land in the right place by
+        // default.
+        val browserMain by creating { dependsOn(commonMain) }
+        val nodeMain by creating { dependsOn(commonMain) }
+        val jsBrowserMain by creating { dependsOn(browserMain) }
+        val wasmJsBrowserMain by creating { dependsOn(browserMain) }
+        val jsNodeMain by creating { dependsOn(nodeMain) }
+        val wasmJsNodeMain by creating { dependsOn(nodeMain) }
     }
+
+    // (compilation wiring TBD — Kotlin Multiplatform js/wasmJs targets do not
+    // expose separate "browser" / "nodejs" Kotlin compilations under this
+    // plugin version, so the leaf source sets above sit unattached until
+    // actuals are added; they emit an "Unused Kotlin Source Sets" warning
+    // until then but the layout is in place.)
     jvmToolchain(21)
 }
 
