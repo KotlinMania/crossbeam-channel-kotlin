@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 # Least-privilege default for any inline job in this file. The reusable
 # workflows invoked below declare their own permissions; this top-level
