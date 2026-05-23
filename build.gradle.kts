@@ -57,10 +57,18 @@ kotlin {
         binaries.framework { baseName = "CrossbeamChannel"; xcf.add(this) }
     }
     iosSimulatorArm64 {
-        binaries.framework { baseName = "CrossbeamChannel"; xcf.add(this) }
+        binaries.framework {
+            baseName = "CrossbeamChannel"
+            isStatic = true
+            xcf.add(this)
+        }
     }
     iosX64 {
-        binaries.framework { baseName = "CrossbeamChannel"; xcf.add(this) }
+        binaries.framework {
+            baseName = "CrossbeamChannel"
+            isStatic = true
+            xcf.add(this)
+        }
     }
 
     tvosArm64 {
