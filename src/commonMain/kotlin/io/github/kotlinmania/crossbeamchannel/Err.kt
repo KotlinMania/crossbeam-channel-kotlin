@@ -8,7 +8,9 @@ package io.github.kotlinmania.crossbeamchannel
  *
  * The error contains the message so it can be recovered.
  */
-class SendError<T>(val inner: T) {
+class SendError<T>(
+    val inner: T,
+) {
     /** Human-readable description of the failure. */
     val message: String get() = "sending on a disconnected channel"
 
@@ -48,10 +50,11 @@ sealed class TrySendError<T> {
 
     /** Human-readable description of the failure. */
     val message: String
-        get() = when (this) {
-            is Full<*> -> "sending on a full channel"
-            is Disconnected<*> -> "sending on a disconnected channel"
-        }
+        get() =
+            when (this) {
+                is Full<*> -> "sending on a full channel"
+                is Disconnected<*> -> "sending on a disconnected channel"
+            }
 
     /**
      * The message could not be sent because the channel is full.
@@ -59,12 +62,16 @@ sealed class TrySendError<T> {
      * If this is a zero-capacity channel, then the error indicates that there was no receiver
      * available to receive the message at the time.
      */
-    class Full<T>(override val inner: T) : TrySendError<T>() {
+    class Full<T>(
+        override val inner: T,
+    ) : TrySendError<T>() {
         override fun toString(): String = "Full(..)"
     }
 
     /** The message could not be sent because the channel is disconnected. */
-    class Disconnected<T>(override val inner: T) : TrySendError<T>() {
+    class Disconnected<T>(
+        override val inner: T,
+    ) : TrySendError<T>() {
         override fun toString(): String = "Disconnected(..)"
     }
 
@@ -114,10 +121,11 @@ sealed class SendTimeoutError<T> {
 
     /** Human-readable description of the failure. */
     val message: String
-        get() = when (this) {
-            is Timeout<*> -> "timed out waiting on send operation"
-            is Disconnected<*> -> "sending on a disconnected channel"
-        }
+        get() =
+            when (this) {
+                is Timeout<*> -> "timed out waiting on send operation"
+                is Disconnected<*> -> "sending on a disconnected channel"
+            }
 
     /**
      * The message could not be sent because the channel is full and the operation timed out.
@@ -125,10 +133,14 @@ sealed class SendTimeoutError<T> {
      * If this is a zero-capacity channel, then the error indicates that there was no receiver
      * available to receive the message and the operation timed out.
      */
-    class Timeout<T>(override val inner: T) : SendTimeoutError<T>()
+    class Timeout<T>(
+        override val inner: T,
+    ) : SendTimeoutError<T>()
 
     /** The message could not be sent because the channel is disconnected. */
-    class Disconnected<T>(override val inner: T) : SendTimeoutError<T>()
+    class Disconnected<T>(
+        override val inner: T,
+    ) : SendTimeoutError<T>()
 
     override fun toString(): String = "SendTimeoutError(..)"
 
@@ -206,10 +218,11 @@ sealed class TryRecvError : Throwable() {
     }
 
     override val message: String
-        get() = when (this) {
-            Empty -> "receiving on an empty channel"
-            Disconnected -> "receiving on an empty and disconnected channel"
-        }
+        get() =
+            when (this) {
+                Empty -> "receiving on an empty channel"
+                Disconnected -> "receiving on an empty and disconnected channel"
+            }
 
     /** Returns `true` if the receive operation failed because the channel is empty. */
     fun isEmpty(): Boolean = this is Empty
@@ -239,10 +252,11 @@ sealed class RecvTimeoutError : Throwable() {
     }
 
     override val message: String
-        get() = when (this) {
-            Timeout -> "timed out waiting on receive operation"
-            Disconnected -> "channel is empty and disconnected"
-        }
+        get() =
+            when (this) {
+                Timeout -> "timed out waiting on receive operation"
+                Disconnected -> "channel is empty and disconnected"
+            }
 
     /** Returns `true` if the receive operation timed out. */
     fun isTimeout(): Boolean = this is Timeout
