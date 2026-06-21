@@ -27,3 +27,6 @@ package io.github.kotlinmania.crossbeamchannel.flavors
 // - `webbrowser-kotlin` imports `crossbeam_channel` as `cbc`.
 //
 // (From `/Volumes/stuff/Projects/kotlinmania/crossbeam-channel-kotlin/RUST_CALLERS.md`.)
+
+
+internal const val FLAVORS_MOD = "crossbeamchannel.flavors"
