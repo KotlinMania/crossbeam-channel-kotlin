@@ -28,5 +28,4 @@ package io.github.kotlinmania.crossbeamchannel.flavors
 //
 // (From `/Volumes/stuff/Projects/kotlinmania/crossbeam-channel-kotlin/RUST_CALLERS.md`.)
 
-
 internal const val FLAVORS_MOD = "crossbeamchannel.flavors"
