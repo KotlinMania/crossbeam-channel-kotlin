@@ -1,4 +1,4 @@
-// port-lint: source src/counter.rs
+// port-lint: source counter.rs
 package io.github.kotlinmania.crossbeamchannel.counter
 
 import kotlin.concurrent.atomics.AtomicLong
