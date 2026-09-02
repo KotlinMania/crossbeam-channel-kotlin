@@ -1,4 +1,3 @@
-// port-lint: ignore — Kotlin smoke tests for the ported err.rs error types
 package io.github.kotlinmania.crossbeamchannel
 
 import kotlin.test.Test

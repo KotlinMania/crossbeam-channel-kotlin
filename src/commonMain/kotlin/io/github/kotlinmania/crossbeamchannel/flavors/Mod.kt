@@ -1,4 +1,4 @@
-// port-lint: source src/flavors/mod.rs
+// port-lint: source flavors/mod.rs
 package io.github.kotlinmania.crossbeamchannel.flavors
 
 /**
@@ -13,19 +13,5 @@ package io.github.kotlinmania.crossbeamchannel.flavors
  * 5. `tick` - Channel that delivers messages periodically.
  * 6. `zero` - Zero-capacity channel.
  */
-
-// pub(crate) mod array;
-// pub(crate) mod at;
-// pub(crate) mod list;
-// pub(crate) mod never;
-// pub(crate) mod tick;
-// pub(crate) mod zero;
-
-// Projected callers (Rust):
-// - `codex-kotlin` imports `crossbeam_channel::{Receiver, Sender, after, never, select, unbounded}`.
-// - `tracing-appender-kotlin` imports `crossbeam_channel::{Receiver, RecvError, SendTimeoutError, Sender, TryRecvError, bounded}`.
-// - `webbrowser-kotlin` imports `crossbeam_channel` as `cbc`.
-//
-// (From `/Volumes/stuff/Projects/kotlinmania/crossbeam-channel-kotlin/RUST_CALLERS.md`.)
-
 internal const val FLAVORS_MOD = "crossbeamchannel.flavors"
+
