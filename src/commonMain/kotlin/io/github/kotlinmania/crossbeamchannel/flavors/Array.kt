@@ -22,7 +22,7 @@ import kotlin.concurrent.atomics.AtomicLong
 import kotlin.time.Instant
 
 internal class ArraySlot<T>(
-    initialStamp: Long
+    initialStamp: Long,
 ) {
     val stamp = AtomicLong(initialStamp)
     var msg: T? = null
@@ -32,7 +32,7 @@ internal class ArraySlot<T>(
  * Bounded channel based on a preallocated array.
  */
 internal class ArrayChannel<T>(
-    val cap: Int
+    val cap: Int,
 ) {
     private val markBit: Long
     private val oneLap: Long
@@ -52,9 +52,10 @@ internal class ArrayChannel<T>(
         markBit = mb
         oneLap = markBit * 2L
 
-        buffer = Array(cap) { i ->
-            ArraySlot(i.toLong())
-        }
+        buffer =
+            Array(cap) { i ->
+                ArraySlot(i.toLong())
+            }
     }
 
     fun receiver(): ArrayReceiver<T> = ArrayReceiver(this)
@@ -79,11 +80,12 @@ internal class ArrayChannel<T>(
             val stamp = slot.stamp.load()
 
             if (tailVal == stamp) {
-                val newTail = if (index + 1 < cap) {
-                    tailVal + 1L
-                } else {
-                    lap + oneLap
-                }
+                val newTail =
+                    if (index + 1 < cap) {
+                        tailVal + 1L
+                    } else {
+                        lap + oneLap
+                    }
 
                 if (tail.compareAndSet(expectedValue = tailVal, newValue = newTail)) {
                     token.arraySlot = index
@@ -132,11 +134,12 @@ internal class ArrayChannel<T>(
             val stamp = slot.stamp.load()
 
             if (headVal + 1L == stamp) {
-                val newHead = if (index + 1 < cap) {
-                    headVal + 1L
-                } else {
-                    lap + oneLap
-                }
+                val newHead =
+                    if (index + 1 < cap) {
+                        headVal + 1L
+                    } else {
+                        lap + oneLap
+                    }
 
                 if (head.compareAndSet(expectedValue = headVal, newValue = newHead)) {
                     token.arraySlot = index
@@ -230,10 +233,14 @@ internal class ArrayChannel<T>(
 
                 val sel = cx.waitUntil(deadline)
                 when (sel) {
-                    is Selected.Waiting -> throw IllegalStateException("unreachable")
+                    is Selected.Waiting -> {
+                        throw IllegalStateException("unreachable")
+                    }
+
                     is Selected.Aborted, is Selected.Disconnected -> {
                         senders.unregister(oper)
                     }
+
                     is Selected.Ready -> {}
                 }
             }
@@ -245,7 +252,7 @@ internal class ArrayChannel<T>(
         return if (startRecv(token)) {
             read(token).fold(
                 onSuccess = { kotlin.Result.success(it) },
-                onFailure = { kotlin.Result.failure(TryRecvError.Disconnected) }
+                onFailure = { kotlin.Result.failure(TryRecvError.Disconnected) },
             )
         } else {
             kotlin.Result.failure(TryRecvError.Empty)
@@ -260,7 +267,7 @@ internal class ArrayChannel<T>(
                 if (startRecv(token)) {
                     return read(token).fold(
                         onSuccess = { kotlin.Result.success(it) },
-                        onFailure = { kotlin.Result.failure(RecvTimeoutError.Disconnected) }
+                        onFailure = { kotlin.Result.failure(RecvTimeoutError.Disconnected) },
                     )
                 }
 
@@ -285,10 +292,14 @@ internal class ArrayChannel<T>(
 
                 val sel = cx.waitUntil(deadline)
                 when (sel) {
-                    is Selected.Waiting -> throw IllegalStateException("unreachable")
+                    is Selected.Waiting -> {
+                        throw IllegalStateException("unreachable")
+                    }
+
                     is Selected.Aborted, is Selected.Disconnected -> {
                         receivers.unregister(oper)
                     }
+
                     is Selected.Ready -> {}
                 }
             }
@@ -353,43 +364,61 @@ internal class ArrayChannel<T>(
     }
 }
 
-internal class ArraySender<T>(val channel: ArrayChannel<T>) : SelectHandle {
+internal class ArraySender<T>(
+    val channel: ArrayChannel<T>,
+) : SelectHandle {
     override fun trySelect(token: Token): Boolean = channel.startSend(token)
+
     override fun deadline(): Instant? = null
+
     override fun register(oper: Operation, cx: Context): Boolean {
         channel.senders.register(oper, cx)
         return isReady()
     }
+
     override fun unregister(oper: Operation) {
         channel.senders.unregister(oper)
     }
+
     override fun accept(token: Token, cx: Context): Boolean = channel.startSend(token)
+
     override fun isReady(): Boolean = !channel.isFull() || channel.isDisconnected()
+
     override fun watch(oper: Operation, cx: Context): Boolean {
         channel.senders.watch(oper, cx)
         return isReady()
     }
+
     override fun unwatch(oper: Operation) {
         channel.senders.unwatch(oper)
     }
 }
 
-internal class ArrayReceiver<T>(val channel: ArrayChannel<T>) : SelectHandle {
+internal class ArrayReceiver<T>(
+    val channel: ArrayChannel<T>,
+) : SelectHandle {
     override fun trySelect(token: Token): Boolean = channel.startRecv(token)
+
     override fun deadline(): Instant? = null
+
     override fun register(oper: Operation, cx: Context): Boolean {
         channel.receivers.register(oper, cx)
         return isReady()
     }
+
     override fun unregister(oper: Operation) {
         channel.receivers.unregister(oper)
     }
+
     override fun accept(token: Token, cx: Context): Boolean = channel.startRecv(token)
+
     override fun isReady(): Boolean = !channel.isEmpty() || channel.isDisconnected()
+
     override fun watch(oper: Operation, cx: Context): Boolean {
         channel.receivers.watch(oper, cx)
         return isReady()
     }
+
     override fun unwatch(oper: Operation) {
         channel.receivers.unwatch(oper)
     }

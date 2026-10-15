@@ -18,9 +18,8 @@ import kotlin.time.Instant
  */
 internal class TickChannel(
     deliveryTime: Instant,
-    private val duration: Duration
+    private val duration: Duration,
 ) : SelectHandle {
-
     private val deliveryTimeRef = AtomicReference(deliveryTime)
 
     fun tryRecv(): kotlin.Result<Instant> {
@@ -74,9 +73,7 @@ internal class TickChannel(
         }
     }
 
-    fun isEmpty(): Boolean {
-        return now() < deliveryTimeRef.load()
-    }
+    fun isEmpty(): Boolean = now() < deliveryTimeRef.load()
 
     fun isFull(): Boolean = !isEmpty()
 

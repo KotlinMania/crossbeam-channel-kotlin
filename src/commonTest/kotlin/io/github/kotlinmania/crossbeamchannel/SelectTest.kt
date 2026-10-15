@@ -3,7 +3,6 @@ package io.github.kotlinmania.crossbeamchannel
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SelectTest {
@@ -16,7 +15,7 @@ class SelectTest {
 
         val sel1 = Select()
         val oper1_1 = sel1.recv(r1)
-        val oper2_1 = sel1.recv(r2)
+        sel1.recv(r2)
         val op1 = sel1.select()
         assertEquals(oper1_1, op1.index())
         assertEquals(Result.success(1), op1.recv(r1))
@@ -24,7 +23,7 @@ class SelectTest {
         s2.send(2)
 
         val sel2 = Select()
-        val oper1_2 = sel2.recv(r1)
+        sel2.recv(r1)
         val oper2_2 = sel2.recv(r2)
         val op2 = sel2.select()
         assertEquals(oper2_2, op2.index())
@@ -33,10 +32,10 @@ class SelectTest {
 
     @Test
     fun smoke2() {
-        val (s1, r1) = unbounded<Int>()
-        val (s2, r2) = unbounded<Int>()
-        val (s3, r3) = unbounded<Int>()
-        val (s4, r4) = unbounded<Int>()
+        val (_, r1) = unbounded<Int>()
+        val (_, r2) = unbounded<Int>()
+        val (_, r3) = unbounded<Int>()
+        val (_, r4) = unbounded<Int>()
         val (s5, r5) = unbounded<Int>()
 
         s5.send(5)

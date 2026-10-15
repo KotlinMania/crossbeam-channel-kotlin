@@ -29,7 +29,7 @@ internal class SpinLock {
 internal class Entry(
     val oper: Operation,
     val packet: Any?,
-    val cx: Context
+    val cx: Context,
 )
 
 /**
@@ -59,15 +59,16 @@ internal class Waker {
     fun trySelect(callerContextId: Long = 0L): Entry? {
         if (selectors.isEmpty()) return null
 
-        val index = selectors.indexOfFirst { entry ->
-            entry.cx.id != callerContextId &&
-                entry.cx.trySelectOrPrevious(Selected.Ready(entry.oper)) == null &&
-                run {
-                    entry.cx.storePacket(entry.packet)
-                    entry.cx.unpark()
-                    true
-                }
-        }
+        val index =
+            selectors.indexOfFirst { entry ->
+                entry.cx.id != callerContextId &&
+                    entry.cx.trySelectOrPrevious(Selected.Ready(entry.oper)) == null &&
+                    run {
+                        entry.cx.storePacket(entry.packet)
+                        entry.cx.unpark()
+                        true
+                    }
+            }
 
         return if (index >= 0) {
             selectors.removeAt(index)
@@ -129,13 +130,12 @@ internal class SyncWaker {
         }
     }
 
-    fun unregister(oper: Operation): Entry? {
-        return lock.withLock {
+    fun unregister(oper: Operation): Entry? =
+        lock.withLock {
             val entry = waker.unregister(oper)
             empty.store(waker.selectors.isEmpty() && waker.observers.isEmpty())
             entry
         }
-    }
 
     fun notifyObservers(callerContextId: Long = 0L) {
         if (!empty.load()) {

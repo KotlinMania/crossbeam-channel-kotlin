@@ -83,7 +83,7 @@ class ArrayTest {
         assertEquals(TrySendOutcome.Err(TrySendError.Disconnected(5)), s.trySend(5))
         assertEquals(
             SendTimeoutOutcome.Err(SendTimeoutError.Disconnected(6)),
-            s.sendTimeout(6, 10.milliseconds)
+            s.sendTimeout(6, 10.milliseconds),
         )
     }
 
@@ -111,7 +111,7 @@ class ArrayTest {
         assertEquals(0, s.len())
         assertEquals(0, r.len())
 
-        for (round in 0 until cap / 10) {
+        repeat(cap / 10) {
             for (i in 0 until 50) {
                 assertEquals(SendOutcome.Ok, s.send(i))
                 assertEquals(i + 1, s.len())
@@ -145,13 +145,13 @@ class ArrayTest {
         val (s1, r1) = bounded<Unit>(count)
         val (s2, r2) = bounded<Unit>(count)
 
-        for (i in 0 until count) {
+        repeat(count) {
             s1.send(Unit)
             s2.send(Unit)
         }
 
         val hits = IntArray(2)
-        for (i in 0 until count) {
+        repeat(count) {
             val sel = Select()
             val i1 = sel.recv(r1)
             val i2 = sel.recv(r2)
@@ -161,6 +161,7 @@ class ArrayTest {
                     op.recv(r1)
                     hits[0]++
                 }
+
                 i2 -> {
                     op.recv(r2)
                     hits[1]++
@@ -175,12 +176,12 @@ class ArrayTest {
         val count = 1000
         val (s, r) = bounded<Unit>(count)
 
-        for (i in 0 until count) {
+        repeat(count) {
             s.send(Unit)
         }
 
         val hits = IntArray(5)
-        for (i in 0 until count) {
+        repeat(count) {
             val sel = Select()
             val indices = (0 until 5).map { sel.recv(r) }
             val op = sel.select()

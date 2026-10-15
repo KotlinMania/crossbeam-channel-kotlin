@@ -14,4 +14,3 @@ package io.github.kotlinmania.crossbeamchannel.flavors
  * 6. `zero` - Zero-capacity channel.
  */
 internal const val FLAVORS_MOD = "crossbeamchannel.flavors"
-

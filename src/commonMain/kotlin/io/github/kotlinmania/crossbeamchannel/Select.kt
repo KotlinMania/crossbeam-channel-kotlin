@@ -69,7 +69,7 @@ public interface SelectHandle {
 public class SelectedOperation internal constructor(
     internal val token: Token,
     private val selectedIndex: Int,
-    internal val handle: SelectHandle
+    internal val handle: SelectHandle,
 ) {
     /**
      * Returns the index of the selected operation.
@@ -79,41 +79,45 @@ public class SelectedOperation internal constructor(
     /**
      * Completes the selected receive operation.
      */
-    public fun <T> recv(receiver: Receiver<T>): kotlin.Result<T> {
-        return receiver.read(token)
-    }
+    public fun <T> recv(receiver: Receiver<T>): kotlin.Result<T> = receiver.read(token)
 
     /**
      * Completes the selected send operation.
      */
-    public fun <T> send(sender: Sender<T>, msg: T): SendOutcome<T> {
-        return sender.write(token, msg)
-    }
+    public fun <T> send(sender: Sender<T>, msg: T): SendOutcome<T> = sender.write(token, msg)
 }
 
 private sealed class Timeout {
     data object Now : Timeout()
+
     data object Never : Timeout()
-    data class At(val deadline: Instant) : Timeout()
+
+    data class At(
+        val deadline: Instant,
+    ) : Timeout()
 }
 
 private data class HandleEntry(
     val handle: SelectHandle,
-    val index: Int
+    val index: Int,
 )
 
 private fun runSelect(
     handles: MutableList<HandleEntry>,
     timeout: Timeout,
-    isBiased: Boolean
+    isBiased: Boolean,
 ): SelectedOperation? {
     if (handles.isEmpty()) {
         when (timeout) {
-            is Timeout.Now -> return null
+            is Timeout.Now -> {
+                return null
+            }
+
             is Timeout.Never -> {
                 sleepUntil(null)
                 throw IllegalStateException("unreachable")
             }
+
             is Timeout.At -> {
                 sleepUntil(timeout.deadline)
                 return null
@@ -134,84 +138,97 @@ private fun runSelect(
     }
 
     while (true) {
-        val res = Context.with<SelectedOperation?> { cx ->
-            var sel: Selected = Selected.Waiting
-            var registeredCount = 0
-            var indexReady: Int? = null
+        val res =
+            Context.with<SelectedOperation?> { cx ->
+                var sel: Selected = Selected.Waiting
+                var registeredCount = 0
+                var indexReady: Int? = null
 
-            if (timeout is Timeout.Now) {
-                cx.trySelect(Selected.Aborted)
-            }
-
-            for (entry in handles) {
-                registeredCount++
-                val oper = Operation(entry.index.toLong() + 10L)
-                if (entry.handle.register(oper, cx)) {
-                    sel = when (val prev = cx.trySelectOrPrevious(Selected.Aborted)) {
-                        null -> {
-                            indexReady = entry.index
-                            Selected.Aborted
-                        }
-                        else -> prev
-                    }
-                    break
-                }
-
-                sel = cx.selected()
-                if (sel != Selected.Waiting) {
-                    break
-                }
-            }
-
-            if (sel == Selected.Waiting) {
-                var deadline: Instant? = when (timeout) {
-                    is Timeout.Now -> return@with null
-                    is Timeout.Never -> null
-                    is Timeout.At -> timeout.deadline
+                if (timeout is Timeout.Now) {
+                    cx.trySelect(Selected.Aborted)
                 }
 
                 for (entry in handles) {
-                    val d = entry.handle.deadline()
-                    if (d != null) {
-                        deadline = if (deadline == null || d < deadline) d else deadline
-                    }
-                }
+                    registeredCount++
+                    val oper = Operation(entry.index.toLong() + 10L)
+                    if (entry.handle.register(oper, cx)) {
+                        sel =
+                            when (val prev = cx.trySelectOrPrevious(Selected.Aborted)) {
+                                null -> {
+                                    indexReady = entry.index
+                                    Selected.Aborted
+                                }
 
-                sel = cx.waitUntil(deadline)
-            }
-
-            for (i in 0 until registeredCount) {
-                val entry = handles[i]
-                val oper = Operation(entry.index.toLong() + 10L)
-                entry.handle.unregister(oper)
-            }
-
-            when (sel) {
-                is Selected.Waiting -> throw IllegalStateException("unreachable")
-                is Selected.Aborted -> {
-                    if (indexReady != null) {
-                        for (entry in handles) {
-                            if (entry.index == indexReady && entry.handle.trySelect(token)) {
-                                return@with SelectedOperation(token, entry.index, entry.handle)
+                                else -> {
+                                    prev
+                                }
                             }
-                        }
+                        break
                     }
-                    null
+
+                    sel = cx.selected()
+                    if (sel != Selected.Waiting) {
+                        break
+                    }
                 }
-                is Selected.Disconnected -> null
-                is Selected.Ready -> {
+
+                if (sel == Selected.Waiting) {
+                    var deadline: Instant? =
+                        when (timeout) {
+                            is Timeout.Now -> return@with null
+                            is Timeout.Never -> null
+                            is Timeout.At -> timeout.deadline
+                        }
+
                     for (entry in handles) {
-                        val oper = Operation(entry.index.toLong() + 10L)
-                        if (sel.operation == oper) {
-                            if (entry.handle.accept(token, cx)) {
-                                return@with SelectedOperation(token, entry.index, entry.handle)
-                            }
+                        val d = entry.handle.deadline()
+                        if (d != null) {
+                            deadline = if (deadline == null || d < deadline) d else deadline
                         }
                     }
-                    null
+
+                    sel = cx.waitUntil(deadline)
+                }
+
+                for (i in 0 until registeredCount) {
+                    val entry = handles[i]
+                    val oper = Operation(entry.index.toLong() + 10L)
+                    entry.handle.unregister(oper)
+                }
+
+                when (sel) {
+                    is Selected.Waiting -> {
+                        throw IllegalStateException("unreachable")
+                    }
+
+                    is Selected.Aborted -> {
+                        if (indexReady != null) {
+                            for (entry in handles) {
+                                if (entry.index == indexReady && entry.handle.trySelect(token)) {
+                                    return@with SelectedOperation(token, entry.index, entry.handle)
+                                }
+                            }
+                        }
+                        null
+                    }
+
+                    is Selected.Disconnected -> {
+                        null
+                    }
+
+                    is Selected.Ready -> {
+                        for (entry in handles) {
+                            val oper = Operation(entry.index.toLong() + 10L)
+                            if (sel.operation == oper) {
+                                if (entry.handle.accept(token, cx)) {
+                                    return@with SelectedOperation(token, entry.index, entry.handle)
+                                }
+                            }
+                        }
+                        null
+                    }
                 }
             }
-        }
 
         if (res != null) {
             return res
@@ -224,8 +241,12 @@ private fun runSelect(
         }
 
         when (timeout) {
-            is Timeout.Now -> return null
+            is Timeout.Now -> {
+                return null
+            }
+
             is Timeout.Never -> {}
+
             is Timeout.At -> {
                 if (now() >= timeout.deadline) {
                     return null
@@ -238,15 +259,19 @@ private fun runSelect(
 private fun runReady(
     handles: MutableList<HandleEntry>,
     timeout: Timeout,
-    isBiased: Boolean
+    isBiased: Boolean,
 ): Int? {
     if (handles.isEmpty()) {
         when (timeout) {
-            is Timeout.Now -> return null
+            is Timeout.Now -> {
+                return null
+            }
+
             is Timeout.Never -> {
                 sleepUntil(null)
                 throw IllegalStateException("unreachable")
             }
+
             is Timeout.At -> {
                 sleepUntil(timeout.deadline)
                 return null
@@ -265,78 +290,91 @@ private fun runReady(
     }
 
     while (true) {
-        val res = Context.with<Int?> { cx ->
-            var sel: Selected = Selected.Waiting
-            var registeredCount = 0
-            var indexReady: Int? = null
+        val res =
+            Context.with<Int?> { cx ->
+                var sel: Selected = Selected.Waiting
+                var registeredCount = 0
+                var indexReady: Int? = null
 
-            if (timeout is Timeout.Now) {
-                cx.trySelect(Selected.Aborted)
-            }
-
-            for (entry in handles) {
-                registeredCount++
-                val oper = Operation(entry.index.toLong() + 10L)
-                if (entry.handle.watch(oper, cx)) {
-                    sel = when (val prev = cx.trySelectOrPrevious(Selected.Aborted)) {
-                        null -> {
-                            indexReady = entry.index
-                            Selected.Aborted
-                        }
-                        else -> prev
-                    }
-                    break
-                }
-
-                sel = cx.selected()
-                if (sel != Selected.Waiting) {
-                    break
-                }
-            }
-
-            if (sel == Selected.Waiting) {
-                var deadline: Instant? = when (timeout) {
-                    is Timeout.Now -> return@with null
-                    is Timeout.Never -> null
-                    is Timeout.At -> timeout.deadline
+                if (timeout is Timeout.Now) {
+                    cx.trySelect(Selected.Aborted)
                 }
 
                 for (entry in handles) {
-                    val d = entry.handle.deadline()
-                    if (d != null) {
-                        deadline = if (deadline == null || d < deadline) d else deadline
+                    registeredCount++
+                    val oper = Operation(entry.index.toLong() + 10L)
+                    if (entry.handle.watch(oper, cx)) {
+                        sel =
+                            when (val prev = cx.trySelectOrPrevious(Selected.Aborted)) {
+                                null -> {
+                                    indexReady = entry.index
+                                    Selected.Aborted
+                                }
+
+                                else -> {
+                                    prev
+                                }
+                            }
+                        break
+                    }
+
+                    sel = cx.selected()
+                    if (sel != Selected.Waiting) {
+                        break
                     }
                 }
 
-                sel = cx.waitUntil(deadline)
-            }
+                if (sel == Selected.Waiting) {
+                    var deadline: Instant? =
+                        when (timeout) {
+                            is Timeout.Now -> return@with null
+                            is Timeout.Never -> null
+                            is Timeout.At -> timeout.deadline
+                        }
 
-            for (i in 0 until registeredCount) {
-                val entry = handles[i]
-                val oper = Operation(entry.index.toLong() + 10L)
-                entry.handle.unwatch(oper)
-            }
-
-            when (sel) {
-                is Selected.Waiting -> throw IllegalStateException("unreachable")
-                is Selected.Aborted -> {
-                    if (indexReady != null) {
-                        return@with indexReady
-                    }
-                    null
-                }
-                is Selected.Disconnected -> null
-                is Selected.Ready -> {
                     for (entry in handles) {
-                        val oper = Operation(entry.index.toLong() + 10L)
-                        if (sel.operation == oper) {
-                            return@with entry.index
+                        val d = entry.handle.deadline()
+                        if (d != null) {
+                            deadline = if (deadline == null || d < deadline) d else deadline
                         }
                     }
-                    null
+
+                    sel = cx.waitUntil(deadline)
+                }
+
+                for (i in 0 until registeredCount) {
+                    val entry = handles[i]
+                    val oper = Operation(entry.index.toLong() + 10L)
+                    entry.handle.unwatch(oper)
+                }
+
+                when (sel) {
+                    is Selected.Waiting -> {
+                        throw IllegalStateException("unreachable")
+                    }
+
+                    is Selected.Aborted -> {
+                        if (indexReady != null) {
+                            return@with indexReady
+                        }
+                        null
+                    }
+
+                    is Selected.Disconnected -> {
+                        null
+                    }
+
+                    is Selected.Ready -> {
+                        for (entry in handles) {
+                            val oper = Operation(entry.index.toLong() + 10L)
+                            if (sel.operation == oper) {
+                                return@with entry.index
+                            }
+                        }
+                        null
+                    }
                 }
             }
-        }
 
         if (res != null) {
             return res
@@ -349,8 +387,12 @@ private fun runReady(
         }
 
         when (timeout) {
-            is Timeout.Now -> return null
+            is Timeout.Now -> {
+                return null
+            }
+
             is Timeout.Never -> {}
+
             is Timeout.At -> {
                 if (now() >= timeout.deadline) {
                     return null
