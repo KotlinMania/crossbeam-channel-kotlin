@@ -30,10 +30,10 @@ class ReadyTest {
 
     @Test
     fun smoke2() {
-        val (s1, r1) = unbounded<Int>()
-        val (s2, r2) = unbounded<Int>()
-        val (s3, r3) = unbounded<Int>()
-        val (s4, r4) = unbounded<Int>()
+        val (_, r1) = unbounded<Int>()
+        val (_, r2) = unbounded<Int>()
+        val (_, r3) = unbounded<Int>()
+        val (_, r4) = unbounded<Int>()
         val (s5, r5) = unbounded<Int>()
 
         s5.send(5)
@@ -43,7 +43,7 @@ class ReadyTest {
         sel.recv(r2)
         sel.recv(r3)
         sel.recv(r4)
-        val oper5 = sel.recv(r5)
+        sel.recv(r5)
         assertEquals(4, sel.ready())
         assertEquals(Result.success(5), r5.tryRecv())
     }

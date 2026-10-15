@@ -17,9 +17,8 @@ import kotlin.time.Instant
  * Channel that delivers a message at a certain moment in time.
  */
 internal class AtChannel(
-    private val deliveryTime: Instant
+    private val deliveryTime: Instant,
 ) : SelectHandle {
-
     private val received = AtomicBoolean(false)
 
     fun tryRecv(): kotlin.Result<Instant> {
@@ -95,9 +94,7 @@ internal class AtChannel(
         }
     }
 
-    override fun deadline(): Instant? {
-        return if (received.load()) null else deliveryTime
-    }
+    override fun deadline(): Instant? = if (received.load()) null else deliveryTime
 
     override fun register(oper: Operation, cx: Context): Boolean = isReady()
 

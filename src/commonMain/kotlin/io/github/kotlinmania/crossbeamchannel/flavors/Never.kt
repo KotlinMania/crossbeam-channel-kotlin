@@ -14,19 +14,14 @@ import kotlin.time.Instant
  * Channel that never delivers messages.
  */
 internal class NeverChannel<T> : SelectHandle {
-
-    fun tryRecv(): kotlin.Result<T> {
-        return kotlin.Result.failure(TryRecvError.Empty)
-    }
+    fun tryRecv(): kotlin.Result<T> = kotlin.Result.failure(TryRecvError.Empty)
 
     fun recv(deadline: Instant?): kotlin.Result<T> {
         sleepUntil(deadline)
         return kotlin.Result.failure(RecvTimeoutError.Timeout)
     }
 
-    fun read(token: Token): kotlin.Result<T> {
-        return kotlin.Result.failure(IllegalStateException("never channel cannot be read"))
-    }
+    fun read(token: Token): kotlin.Result<T> = kotlin.Result.failure(IllegalStateException("never channel cannot be read"))
 
     fun isEmpty(): Boolean = true
 

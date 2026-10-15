@@ -94,7 +94,7 @@ class ListTest {
         r.release()
         assertEquals(
             SendTimeoutOutcome.Err(SendTimeoutError.Disconnected(777)),
-            s.sendTimeout(777, 0.milliseconds)
+            s.sendTimeout(777, 0.milliseconds),
         )
     }
 
@@ -112,7 +112,7 @@ class ListTest {
         assertEquals(TrySendOutcome.Err(TrySendError.Disconnected(5)), s.trySend(5))
         assertEquals(
             SendTimeoutOutcome.Err(SendTimeoutError.Disconnected(6)),
-            s.sendTimeout(6, 0.milliseconds)
+            s.sendTimeout(6, 0.milliseconds),
         )
     }
 
@@ -159,13 +159,13 @@ class ListTest {
         val (s1, r1) = unbounded<Unit>()
         val (s2, r2) = unbounded<Unit>()
 
-        for (i in 0 until count) {
+        repeat(count) {
             s1.send(Unit)
             s2.send(Unit)
         }
 
         val hits = IntArray(2)
-        for (i in 0 until count) {
+        repeat(count) {
             val sel = Select()
             val i1 = sel.recv(r1)
             val i2 = sel.recv(r2)
@@ -175,6 +175,7 @@ class ListTest {
                     op.recv(r1)
                     hits[0]++
                 }
+
                 i2 -> {
                     op.recv(r2)
                     hits[1]++
@@ -189,12 +190,12 @@ class ListTest {
         val count = 1000
         val (s, r) = unbounded<Unit>()
 
-        for (i in 0 until count) {
+        repeat(count) {
             s.send(Unit)
         }
 
         val hits = IntArray(5)
-        for (i in 0 until count) {
+        repeat(count) {
             val sel = Select()
             val indices = (0 until 5).map { sel.recv(r) }
             val op = sel.select()

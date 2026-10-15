@@ -10,7 +10,9 @@ private val NEXT_CONTEXT_ID = AtomicLong(1L)
 /**
  * Identifier associated with an operation by a specific thread on a specific channel.
  */
-public data class Operation(public val id: Long) {
+public data class Operation(
+    public val id: Long,
+) {
     public companion object {
         private val NEXT_OPERATION_ID = AtomicLong(10L)
 
@@ -46,22 +48,26 @@ public sealed class Selected {
     /**
      * An operation became ready because a message can be sent or received.
      */
-    public data class Ready(public val operation: Operation) : Selected()
+    public data class Ready(
+        public val operation: Operation,
+    ) : Selected()
 
-    public fun toCode(): Long = when (this) {
-        is Waiting -> 0L
-        is Aborted -> 1L
-        is Disconnected -> 2L
-        is Ready -> operation.id
-    }
+    public fun toCode(): Long =
+        when (this) {
+            is Waiting -> 0L
+            is Aborted -> 1L
+            is Disconnected -> 2L
+            is Ready -> operation.id
+        }
 
     public companion object {
-        public fun fromCode(code: Long): Selected = when (code) {
-            0L -> Waiting
-            1L -> Aborted
-            2L -> Disconnected
-            else -> Ready(Operation(code))
-        }
+        public fun fromCode(code: Long): Selected =
+            when (code) {
+                0L -> Waiting
+                1L -> Aborted
+                2L -> Disconnected
+                else -> Ready(Operation(code))
+            }
     }
 }
 
@@ -71,7 +77,7 @@ public sealed class Selected {
 private class ContextInner(
     val id: Long,
     val select: AtomicLong = AtomicLong(0L),
-    val packet: AtomicReference<Any?> = AtomicReference(null)
+    val packet: AtomicReference<Any?> = AtomicReference(null),
 ) {
     fun reset() {
         select.store(0L)
@@ -82,8 +88,9 @@ private class ContextInner(
 /**
  * Thread/coroutine context used in select and blocking operations.
  */
-public class Context private constructor(private val inner: ContextInner) {
-
+public class Context private constructor(
+    private val inner: ContextInner,
+) {
     public val id: Long
         get() = inner.id
 
@@ -124,9 +131,7 @@ public class Context private constructor(private val inner: ContextInner) {
     /**
      * Returns the selected operation.
      */
-    public fun selected(): Selected {
-        return Selected.fromCode(inner.select.load())
-    }
+    public fun selected(): Selected = Selected.fromCode(inner.select.load())
 
     /**
      * Stores a packet.
@@ -185,9 +190,7 @@ public class Context private constructor(private val inner: ContextInner) {
     /**
      * Returns the id of the thread/context this context belongs to.
      */
-    public fun threadId(): Long {
-        return inner.id
-    }
+    public fun threadId(): Long = inner.id
 
     public companion object {
         /**

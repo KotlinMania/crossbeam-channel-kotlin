@@ -136,8 +136,9 @@ internal class ListChannel<T> {
 
     @Suppress("UNCHECKED_CAST")
     fun write(token: Token, msg: T): SendOutcome<T> {
-        val blockObj = token.listBlock
-            ?: return SendOutcome.Err(SendError(msg))
+        val blockObj =
+            token.listBlock
+                ?: return SendOutcome.Err(SendError(msg))
 
         val block = blockObj as ListBlock<T>
         val slot = block.slots[token.listOffset]
@@ -200,8 +201,9 @@ internal class ListChannel<T> {
 
     @Suppress("UNCHECKED_CAST")
     fun read(token: Token): kotlin.Result<T> {
-        val blockObj = token.listBlock
-            ?: return kotlin.Result.failure(RecvError())
+        val blockObj =
+            token.listBlock
+                ?: return kotlin.Result.failure(RecvError())
 
         val block = blockObj as ListBlock<T>
         val slot = block.slots[token.listOffset]
@@ -246,7 +248,7 @@ internal class ListChannel<T> {
         return if (startRecv(token)) {
             read(token).fold(
                 onSuccess = { kotlin.Result.success(it) },
-                onFailure = { kotlin.Result.failure(TryRecvError.Disconnected) }
+                onFailure = { kotlin.Result.failure(TryRecvError.Disconnected) },
             )
         } else {
             kotlin.Result.failure(TryRecvError.Empty)
@@ -263,7 +265,7 @@ internal class ListChannel<T> {
                 if (startRecv(token)) {
                     return read(token).fold(
                         onSuccess = { kotlin.Result.success(it) },
-                        onFailure = { kotlin.Result.failure(RecvTimeoutError.Disconnected) }
+                        onFailure = { kotlin.Result.failure(RecvTimeoutError.Disconnected) },
                     )
                 }
 
@@ -288,10 +290,14 @@ internal class ListChannel<T> {
 
                 val sel = cx.waitUntil(deadline)
                 when (sel) {
-                    is Selected.Waiting -> throw IllegalStateException("unreachable")
+                    is Selected.Waiting -> {
+                        throw IllegalStateException("unreachable")
+                    }
+
                     is Selected.Aborted, is Selected.Disconnected -> {
                         receivers.unregister(oper)
                     }
+
                     is Selected.Ready -> {}
                 }
             }
@@ -362,33 +368,51 @@ internal class ListChannel<T> {
     }
 }
 
-internal class ListSender<T>(val channel: ListChannel<T>) : SelectHandle {
+internal class ListSender<T>(
+    val channel: ListChannel<T>,
+) : SelectHandle {
     override fun trySelect(token: Token): Boolean = channel.startSend(token)
+
     override fun deadline(): Instant? = null
+
     override fun register(oper: Operation, cx: Context): Boolean = isReady()
+
     override fun unregister(oper: Operation) {}
+
     override fun accept(token: Token, cx: Context): Boolean = channel.startSend(token)
+
     override fun isReady(): Boolean = true
+
     override fun watch(oper: Operation, cx: Context): Boolean = isReady()
+
     override fun unwatch(oper: Operation) {}
 }
 
-internal class ListReceiver<T>(val channel: ListChannel<T>) : SelectHandle {
+internal class ListReceiver<T>(
+    val channel: ListChannel<T>,
+) : SelectHandle {
     override fun trySelect(token: Token): Boolean = channel.startRecv(token)
+
     override fun deadline(): Instant? = null
+
     override fun register(oper: Operation, cx: Context): Boolean {
         channel.receivers.register(oper, cx)
         return isReady()
     }
+
     override fun unregister(oper: Operation) {
         channel.receivers.unregister(oper)
     }
+
     override fun accept(token: Token, cx: Context): Boolean = channel.startRecv(token)
+
     override fun isReady(): Boolean = !channel.isEmpty() || channel.isDisconnected()
+
     override fun watch(oper: Operation, cx: Context): Boolean {
         channel.receivers.watch(oper, cx)
         return isReady()
     }
+
     override fun unwatch(oper: Operation) {
         channel.receivers.unwatch(oper)
     }
